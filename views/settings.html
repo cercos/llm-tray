@@ -196,6 +196,31 @@
         margin-top: 6px;
       }
 
+      .shortcut-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .shortcut-control .shortcut-box {
+        flex: 1;
+      }
+
+      .shortcut-clear {
+        margin-top: 6px;
+        padding: 9px 12px;
+        border-radius: var(--radius);
+        border: 1px solid #555;
+        background: #242424;
+        color: #ddd;
+        cursor: pointer;
+      }
+
+      .shortcut-clear:hover {
+        background: #2d2d2d;
+        border-color: #666;
+      }
+
       /* Shared list styling */
       .llm-list,
       #searchList {
@@ -394,20 +419,29 @@
           <div class="section-content" id="shortcutsContent">
             <div class="shortcut-row">
               <label>Toggle Window</label>
-              <div id="shortcutDisplay" class="shortcut-box" tabindex="0">
-                Click to change shortcut
+              <div class="shortcut-control">
+                <div id="shortcutDisplay" class="shortcut-box" tabindex="0">
+                  Not set (click to change)
+                </div>
+                <button id="shortcutClear" class="shortcut-clear" type="button">Clear</button>
               </div>
             </div>
             <div class="shortcut-row">
               <label>Center Window</label>
-              <div id="centerShortcutDisplay" class="shortcut-box" tabindex="0">
-                Click to change shortcut
+              <div class="shortcut-control">
+                <div id="centerShortcutDisplay" class="shortcut-box" tabindex="0">
+                  Not set (click to change)
+                </div>
+                <button id="centerShortcutClear" class="shortcut-clear" type="button">Clear</button>
               </div>
             </div>
             <div class="shortcut-row">
               <label>Open Settings</label>
-              <div id="settingsShortcutDisplay" class="shortcut-box" tabindex="0">
-                Click to change shortcut
+              <div class="shortcut-control">
+                <div id="settingsShortcutDisplay" class="shortcut-box" tabindex="0">
+                  Not set (click to change)
+                </div>
+                <button id="settingsShortcutClear" class="shortcut-clear" type="button">Clear</button>
               </div>
             </div>
           </div>
@@ -770,12 +804,34 @@
 
             if (combo && !["Ctrl", "Alt", "Shift", "Super"].includes(combo)) {
               settings[settingName] = combo;
-              el.textContent = combo;
+              renderShortcutDisplays();
               await window.electronAPI.saveSettings(settings);
             }
 
             pressedOrder = [];
           }
+        });
+      }
+
+      function getShortcutDisplayValue(settingName) {
+        return settings[settingName] || "Not set (click to change)";
+      }
+
+      function renderShortcutDisplays() {
+        document.getElementById("shortcutDisplay").textContent =
+          getShortcutDisplayValue("shortcut");
+        document.getElementById("centerShortcutDisplay").textContent =
+          getShortcutDisplayValue("centerShortcut");
+        document.getElementById("settingsShortcutDisplay").textContent =
+          getShortcutDisplayValue("settingsShortcut");
+      }
+
+      function bindShortcutClear(buttonId, settingName) {
+        const btn = document.getElementById(buttonId);
+        btn.addEventListener("click", async () => {
+          settings[settingName] = "";
+          renderShortcutDisplays();
+          await window.electronAPI.saveSettings(settings);
         });
       }
 
@@ -788,6 +844,9 @@
         document.getElementById("settingsShortcutDisplay"),
         "settingsShortcut",
       );
+      bindShortcutClear("shortcutClear", "shortcut");
+      bindShortcutClear("centerShortcutClear", "centerShortcut");
+      bindShortcutClear("settingsShortcutClear", "settingsShortcut");
 
       /* -----------------------------
      LOAD SETTINGS
@@ -796,14 +855,7 @@
         settings = (await window.electronAPI.getSettings()) || {};
         settings.customLLMs = settings.customLLMs || [];
 
-        document.getElementById("shortcutDisplay").textContent =
-          settings.shortcut || "Click to change shortcut";
-
-        document.getElementById("centerShortcutDisplay").textContent =
-          settings.centerShortcut || "Click to change shortcut";
-
-        document.getElementById("settingsShortcutDisplay").textContent =
-          settings.settingsShortcut || "Click to change shortcut";
+        renderShortcutDisplays();
 
         document.getElementById("autoLaunch").checked =
           await window.electronAPI.checkAutostart();

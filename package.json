@@ -6,7 +6,7 @@
   "author": "derek",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --linux"
+    "dist": "rm -rf dist && electron-builder --win --linux"
   },
   "build": {
     "appId": "com.derek.llmtray",

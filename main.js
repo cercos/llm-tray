@@ -440,8 +440,61 @@ function sanitizeNumber(value, { min, max, integer = false } = {}) {
 function sanitizeShortcut(value) {
   const shortcut = sanitizeString(value, 80);
   if (!shortcut) return null;
-  if (!/^[A-Za-z0-9+ ]+$/.test(shortcut)) return null;
-  return shortcut;
+  const tokens = shortcut
+    .split("+")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!tokens.length) return null;
+
+  const validNamedKeys = new Set([
+    "Space",
+    "Tab",
+    "Enter",
+    "Return",
+    "Escape",
+    "Esc",
+    "Backspace",
+    "Delete",
+    "Insert",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+    "Up",
+    "Down",
+    "Left",
+    "Right",
+  ]);
+
+  for (const token of tokens) {
+    if (
+      [
+        "Ctrl",
+        "Control",
+        "Cmd",
+        "Command",
+        "CommandOrControl",
+        "CmdOrCtrl",
+        "Alt",
+        "Option",
+        "AltGr",
+        "Shift",
+        "Super",
+        "Meta",
+      ].includes(token)
+    ) {
+      continue;
+    }
+
+    if (/^F([1-9]|1[0-9]|2[0-4])$/.test(token)) continue;
+    if (/^[A-Za-z0-9]$/.test(token)) continue;
+    if (/^[,./;'\[\]\\\-=`]$/.test(token)) continue;
+    if (validNamedKeys.has(token)) continue;
+
+    return null;
+  }
+
+  return tokens.join("+");
 }
 
 function sanitizeUrl(value) {
@@ -555,6 +608,7 @@ function sanitizeSettingsPatch(patch) {
   if (!patch || typeof patch !== "object" || Array.isArray(patch)) return {};
 
   const out = {};
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(patch, key);
 
   if (typeof patch.autoLaunch === "boolean") out.autoLaunch = patch.autoLaunch;
   if (typeof patch.showOnStartup === "boolean")
@@ -565,14 +619,29 @@ function sanitizeSettingsPatch(patch) {
   if (typeof patch.showMenuIcons === "boolean")
     out.showMenuIcons = patch.showMenuIcons;
 
-  const shortcut = sanitizeShortcut(patch.shortcut);
-  if (shortcut) out.shortcut = shortcut;
+  if (hasOwn("shortcut")) {
+    if (patch.shortcut === "") out.shortcut = "";
+    else {
+      const shortcut = sanitizeShortcut(patch.shortcut);
+      if (shortcut) out.shortcut = shortcut;
+    }
+  }
 
-  const centerShortcut = sanitizeShortcut(patch.centerShortcut);
-  if (centerShortcut) out.centerShortcut = centerShortcut;
+  if (hasOwn("centerShortcut")) {
+    if (patch.centerShortcut === "") out.centerShortcut = "";
+    else {
+      const centerShortcut = sanitizeShortcut(patch.centerShortcut);
+      if (centerShortcut) out.centerShortcut = centerShortcut;
+    }
+  }
 
-  const settingsShortcut = sanitizeShortcut(patch.settingsShortcut);
-  if (settingsShortcut) out.settingsShortcut = settingsShortcut;
+  if (hasOwn("settingsShortcut")) {
+    if (patch.settingsShortcut === "") out.settingsShortcut = "";
+    else {
+      const settingsShortcut = sanitizeShortcut(patch.settingsShortcut);
+      if (settingsShortcut) out.settingsShortcut = settingsShortcut;
+    }
+  }
 
   if (typeof patch.theme === "string") {
     const theme = patch.theme.trim().toLowerCase();
@@ -2063,18 +2132,22 @@ function openSettings() {
 }
 
 function registerShortcuts(settings) {
-  try {
-    globalShortcut.unregisterAll();
-    if (captureMode) return;
-    const combo = settings.shortcut || "Ctrl+Shift+Space";
-    globalShortcut.register(combo, toggleWindow);
-    if (settings.centerShortcut)
-      globalShortcut.register(settings.centerShortcut, centerWindow);
-    if (settings.settingsShortcut)
-      globalShortcut.register(settings.settingsShortcut, openSettings);
-  } catch (e) {
-    console.error("Error registering shortcut:", e);
-  }
+  globalShortcut.unregisterAll();
+  if (captureMode) return;
+
+  const tryRegister = (combo, handler, label) => {
+    if (!combo) return;
+    try {
+      const ok = globalShortcut.register(combo, handler);
+      if (!ok) console.warn(`Unable to register ${label} shortcut: ${combo}`);
+    } catch (e) {
+      console.error(`Error registering ${label} shortcut (${combo}):`, e);
+    }
+  };
+
+  tryRegister(settings.shortcut, toggleWindow, "toggle");
+  tryRegister(settings.centerShortcut, centerWindow, "center");
+  tryRegister(settings.settingsShortcut, openSettings, "settings");
 }
 
 app.on("before-quit", () => (isQuitting = true));

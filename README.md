@@ -9,7 +9,7 @@ This repo is mainly an experiment in whether a usable app can be built almost en
 ## Features
 
 - Tray app with quick `Show/Hide`, `Center Window`, provider switching, and `Quit`
-- Global hotkey to toggle the app (default: `Ctrl+Shift+Space`)
+- Configurable global hotkeys (toggle window, center window, open settings)
 - Single-view mode or tabbed mode for multi-tab browsing
 - Built-in providers: ChatGPT, Gemini, Claude, Grok
 - Custom LLMs: add, remove, reorder, and hide providers
