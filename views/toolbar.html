@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      body {
+        margin: 0;
+        background: #202020;
+        color: #eee;
+        font-family: "Segoe UI", sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 44px;
+        padding: 0 10px;
+      }
+
+      #llmButtons {
+        display: flex;
+        gap: 8px;
+      }
+
+      #llmButtons button {
+        background: #1e1e1e;
+        color: #eee;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        padding: 3px 5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      #llmButtons button:hover {
+        opacity: 0.85;
+      }
+
+      button {
+        background: none;
+        border: none;
+        color: #eee;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 2px 5px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="flex: 1"></div>
+    <div id="llmButtons"></div>
+    <div style="flex: 1; display: flex; justify-content: flex-end">
+      <button id="settingsBtn">⚙️</button>
+    </div>
+
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      function applyTheme(isDark) {
+        document.body.style.background = isDark ? "#202020" : "#f3f3f3";
+        document.body.style.color = isDark ? "#eee" : "#222";
+      }
+
+      ipcRenderer.on(
+        "load-llm-list",
+        (_e, llms, badges = {}, isDark = false) => {
+          applyTheme(isDark);
+          const container = document.getElementById("llmButtons");
+          container.innerHTML = "";
+          const brandColors = {
+            chatgpt: "#10A37F",
+            gemini: "#4285F4",
+            claude: "#FFB300",
+            grok: "#111",
+          };
+
+          function colorFromName(name) {
+            const h = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+            return `hsl(${h},70%,55%)`;
+          }
+
+          Object.entries(llms).forEach(([name, url]) => {
+            const lower = name.toLowerCase();
+            const btn = document.createElement("button");
+            btn.dataset.name = lower;
+            const count = badges[lower] || 0;
+            btn.textContent =
+              lower.charAt(0).toUpperCase() +
+              lower.slice(1) +
+              (count ? ` (${count})` : "");
+            const accent = brandColors[lower] || colorFromName(name);
+            btn.onmouseover = () => {
+              btn.style.background = accent;
+              btn.style.borderColor = accent;
+              btn.style.color = lower === "claude" ? "#202" : "#fff";
+            };
+            btn.onmouseout = () => {
+              btn.style.background = isDark ? "#1e1e1e" : "#fff";
+              btn.style.borderColor = "transparent";
+              btn.style.color = isDark ? "#eee" : "#222";
+            };
+            btn.onclick = () => ipcRenderer.send("load-llm", url);
+            container.appendChild(btn);
+          });
+        },
+      );
+
+      document
+        .getElementById("settingsBtn")
+        .addEventListener("click", () => ipcRenderer.send("open-settings"));
+    </script>
+  </body>
+</html>

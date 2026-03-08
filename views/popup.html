@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Popup</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #1b1b1b; color: #ddd; }
+    #bar {
+      display: flex; align-items: center;
+      background: #2a2a2a; padding: 6px 10px; font-size: 14px;
+    }
+    input {
+      flex: 1; margin-left: 8px; padding: 5px 8px;
+      border-radius: 6px; border: none; background: #444; color: white;
+    }
+    iframe {
+      width: 100%; height: calc(100vh - 36px);
+      border: none;
+    }
+    button {
+      margin-left: 8px; background: #0a84ff; color: white; border: none;
+      padding: 5px 10px; border-radius: 6px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <span>&#128279;</span>
+    <input id="url" readonly />
+    <button id="open">↗</button>
+  </div>
+  <iframe id="view"></iframe>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const target = params.get("url");
+    document.getElementById("url").value = target;
+    document.getElementById("view").src = target;
+    document.getElementById("open").onclick = () => window.open(target);
+  </script>
+</body>
+</html>

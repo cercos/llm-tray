@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LLM Tray Settings</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #1b1b1b;
+        --fg: #e6e6e6;
+        --card-bg: #262626;
+        --accent: #0a84ff;
+        --radius: 12px;
+        --border: #333;
+        --muted: #999;
+      }
+
+      body {
+        font-family: "Segoe UI", "Inter", sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .card {
+        width: 100%;
+        height: 100%;
+        padding: 30px 40px; /* Reduced top padding since header is gone */
+        box-sizing: border-box;
+        overflow-y: auto;
+      }
+
+      h2 {
+        margin: 0 0 25px;
+        font-size: 22px;
+        font-weight: 600;
+      }
+
+      h3 {
+        margin-top: 32px;
+        font-size: 14px;
+        font-weight: 700;
+        border-bottom: 2px solid var(--border);
+        padding-bottom: 10px;
+        padding-top: 10px;
+        color: #aaa;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      h3:first-of-type {
+        margin-top: 0;
+      }
+
+      h3::before {
+        content: "▼";
+        font-size: 10px;
+        transition: transform 0.2s ease;
+      }
+
+      h3.collapsed::before {
+        transform: rotate(-90deg);
+      }
+
+      .section-content {
+        max-height: 2000px;
+        overflow: hidden;
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        opacity: 1;
+      }
+
+      .section-content.collapsed {
+        max-height: 0;
+        opacity: 0;
+      }
+
+      label {
+        font-weight: 600;
+        display: block;
+        margin: 14px 0 6px;
+      }
+
+      input[type="text"],
+      select {
+        width: 100%;
+        padding: 9px 12px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: #272727;
+        color: var(--fg);
+      }
+
+      .settings-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+      }
+
+      @media (max-width: 1200px) {
+        .settings-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .settings-column {
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Setting Row Container */
+      .setting-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1f1f1f;
+        padding: 14px 16px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+      }
+
+      .setting-row:hover {
+        background: #2a2a2a;
+        border-color: #444;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .setting-row label {
+        margin: 0;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      /* Input Fields */
+      .input-row {
+        background: #1f1f1f;
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+      }
+
+      .input-row:hover {
+        background: #2a2a2a;
+        border-color: #444;
+      }
+
+      .input-row label {
+        margin: 0 0 8px 0;
+      }
+
+      .input-row input[type="text"],
+      .input-row select {
+        margin-top: 6px;
+      }
+
+      /* Shortcut boxes */
+      .shortcut-row {
+        background: #1f1f1f;
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+      }
+
+      .shortcut-row:hover {
+        background: #2a2a2a;
+        border-color: #444;
+      }
+
+      .shortcut-row label {
+        margin: 0 0 8px 0;
+        display: block;
+      }
+
+      .shortcut-box {
+        background: #272727;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 9px 12px;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        margin-top: 6px;
+      }
+
+      /* Shared list styling */
+      .llm-list,
+      #searchList {
+        margin-top: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: #202020;
+      }
+
+      .llm-row,
+      .engine-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 16px;
+        border-bottom: 1px solid #333;
+      }
+
+      .llm-row:last-child,
+      .engine-row:last-child {
+        border-bottom: none;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      /* Switch */
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 36px;
+        height: 20px;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: #666;
+        border-radius: 20px;
+        transition: 0.3s;
+      }
+      .slider:before {
+        content: "";
+        position: absolute;
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: 0.3s;
+      }
+      input:checked + .slider {
+        background: var(--accent);
+      }
+      input:checked + .slider:before {
+        transform: translateX(16px);
+      }
+
+      .delete-btn {
+        background: #c33;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+      }
+
+      .add-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .add-row button {
+        background: var(--accent);
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: var(--radius);
+        cursor: pointer;
+      }
+
+      .llm-row.dragging {
+        opacity: 0.2;
+        background: var(--accent) !important;
+        border: 1px dashed white;
+      }
+
+      .drag-handle {
+        padding: 0 8px;
+        cursor: grab;
+      }
+
+      .drag-handle:active {
+        cursor: grabbing;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <h2>Settings</h2>
+
+      <div class="settings-grid">
+        <div class="settings-column">
+          <!-- GENERAL -->
+          <h3 id="generalHeader">General</h3>
+          <div class="section-content" id="generalContent">
+            <div class="setting-row">
+              <label>Launch on System Startup</label>
+              <label class="switch">
+                <input type="checkbox" id="autoLaunch" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <label>Show Window at Startup</label>
+              <label class="switch">
+                <input type="checkbox" id="showOnStartup" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <label>Enable Tab Mode (Requires Restart)</label>
+              <label class="switch">
+                <input type="checkbox" id="enableTabs" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <label>Hide System Borders (Tab Mode, Requires Restart)</label>
+              <label class="switch">
+                <input type="checkbox" id="hideSystemBorders" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="input-row">
+              <label>Theme</label>
+              <select id="theme">
+                <option value="auto">Auto (System)</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+            <div class="input-row">
+              <label>Downloads Path</label>
+              <input type="text" id="downloadsPath" readonly placeholder="Loading..." />
+            </div>
+            <div class="input-row">
+              <label>Zoom Level</label>
+              <select id="zoomLevel">
+                <option value="-2">50%</option>
+                <option value="-1">75%</option>
+                <option value="0">100% (Default)</option>
+                <option value="1">125%</option>
+                <option value="2">150%</option>
+                <option value="3">175%</option>
+                <option value="4">200%</option>
+              </select>
+            </div>
+            <div class="input-row">
+              <label>User Agent</label>
+              <input type="text" id="userAgent" placeholder="Browser user agent string (leave empty for default)" />
+            </div>
+          </div>
+          <!-- CONTEXT MENU -->
+          <h3 id="contextMenuHeader">Context Menu</h3>
+          <div class="section-content" id="contextMenuContent">
+            <div class="setting-row">
+              <label>Show Menu Icons</label>
+              <label class="switch">
+                <input type="checkbox" id="showMenuIcons" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div id="iconSizeContainer" class="input-row">
+              <label>Icon Size (px)</label>
+              <select id="menuIconSize">
+                <option value="16">16px (Small)</option>
+                <option value="20">20px (Medium)</option>
+                <option value="24">24px (Large)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- SHORTCUTS -->
+          <h3 id="shortcutsHeader">Shortcuts</h3>
+          <div class="section-content" id="shortcutsContent">
+            <div class="shortcut-row">
+              <label>Toggle Window</label>
+              <div id="shortcutDisplay" class="shortcut-box" tabindex="0">
+                Click to change shortcut
+              </div>
+            </div>
+            <div class="shortcut-row">
+              <label>Center Window</label>
+              <div id="centerShortcutDisplay" class="shortcut-box" tabindex="0">
+                Click to change shortcut
+              </div>
+            </div>
+            <div class="shortcut-row">
+              <label>Open Settings</label>
+              <div id="settingsShortcutDisplay" class="shortcut-box" tabindex="0">
+                Click to change shortcut
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-column">
+          <!-- LLMS -->
+          <h3 id="llmsHeader">LLMs</h3>
+          <div class="section-content" id="llmsContent">
+          <div class="llm-list" id="llmList"></div>
+          <div class="add-row">
+            <input id="llmName" type="text" placeholder="Add custom name..." />
+            <input id="llmUrl" type="text" placeholder="https://..." />
+            <button id="addLLM">Add</button>
+          </div>
+          </div>
+          <!-- SEARCH ENGINES -->
+          <h3 id="searchEnginesHeader">Search Engines</h3>
+          <div class="section-content" id="searchEnginesContent">
+          <div id="searchList"></div>
+          <div class="add-row">
+            <input
+              id="searchName"
+              type="text"
+              placeholder="Name (ex: mojeek)"
+            />
+            <input
+              id="searchTemplate"
+              type="text"
+              placeholder="URL with %s placeholder"
+            />
+            <button id="addSearchEngine">Add</button>
+          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let settings = {};
+
+      /* Built-in search engines (matches main.js) */
+      const BASE_ENGINES = {
+        google: "https://www.google.com/search?q=%s",
+        duckduckgo: "https://duckduckgo.com/?q=%s",
+        bing: "https://www.bing.com/search?q=%s",
+        brave: "https://search.brave.com/search?q=%s",
+        kagi: "https://kagi.com/search?q=%s",
+      };
+
+      /* -----------------------------
+     RENDER SEARCH ENGINES
+  ----------------------------- */
+      function renderSearchEngines() {
+        const list = document.getElementById("searchList");
+        list.innerHTML = "";
+
+        const hidden = settings.searchEnginesHidden || [];
+        const custom = settings.customSearchEngines || [];
+
+        const combined = [
+          ...Object.entries(BASE_ENGINES).map(([name, template]) => ({
+            name,
+            template,
+            builtin: true,
+          })),
+          ...custom.map((c) => ({
+            name: c.name,
+            template: c.template,
+            builtin: false,
+          })),
+        ];
+
+        combined.forEach((e) => {
+          const row = document.createElement("div");
+          row.className = "engine-row";
+
+          row.innerHTML = `
+            <div>${e.name} — ${e.template}</div>
+            <div class="actions">
+              <label class="switch">
+                <input type="checkbox"
+                  class="showSwitch"
+                  data-name="${e.name}"
+                  ${!hidden.includes(e.name) ? "checked" : ""}
+                />
+                <span class="slider"></span>
+              </label>
+
+              ${
+                e.builtin
+                  ? ""
+                  : `
+                <button class="delete-btn" data-name="${e.name}">✕</button>
+              `
+              }
+            </div>
+          `;
+
+          list.appendChild(row);
+        });
+
+        // Visibility toggle
+        list.querySelectorAll(".showSwitch").forEach((sw) => {
+          sw.addEventListener("change", async (ev) => {
+            const name = ev.target.dataset.name;
+
+            settings.searchEnginesHidden = settings.searchEnginesHidden || [];
+
+            if (!ev.target.checked) {
+              if (!settings.searchEnginesHidden.includes(name))
+                settings.searchEnginesHidden.push(name);
+            } else {
+              settings.searchEnginesHidden =
+                settings.searchEnginesHidden.filter((n) => n !== name);
+            }
+
+            await window.electronAPI.saveSettings(settings);
+          });
+        });
+
+        // Delete custom
+        list.querySelectorAll(".delete-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            settings.customSearchEngines = settings.customSearchEngines.filter(
+              (c) => c.name !== btn.dataset.name,
+            );
+            await window.electronAPI.saveSettings(settings);
+            renderSearchEngines();
+          });
+        });
+      }
+
+      /* ADD SEARCH ENGINE */
+      document
+        .getElementById("addSearchEngine")
+        .addEventListener("click", async () => {
+          const name = searchName.value.trim().toLowerCase();
+          const template = searchTemplate.value.trim();
+
+          if (!name || !template || !template.includes("%s")) return;
+
+          settings.customSearchEngines = settings.customSearchEngines || [];
+          settings.customSearchEngines.push({ name, template });
+
+          searchName.value = "";
+          searchTemplate.value = "";
+
+          await window.electronAPI.saveSettings(settings);
+          renderSearchEngines();
+        });
+
+      /* -----------------------------
+     LLMs
+  ----------------------------- */
+      const baseLLMs = [
+        { name: "ChatGPT", url: "https://chat.openai.com/" },
+        { name: "Gemini", url: "https://gemini.google.com/" },
+        { name: "Claude", url: "https://claude.ai/" },
+        { name: "Grok", url: "https://grok.com/" },
+      ];
+
+      const llmList = document.getElementById("llmList");
+
+      function renderLLMs() {
+        llmList.innerHTML = "";
+        const all = settings.orderedLLMs || [
+          ...baseLLMs,
+          ...settings.customLLMs,
+        ];
+
+        all.forEach((llm) => {
+          const row = document.createElement("div");
+          row.className = "llm-row";
+          row.draggable = true;
+          row.dataset.name = llm.name;
+          row.style.cursor = "move";
+
+          row.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px; pointer-events:none;">
+        <span class="drag-handle" style="cursor:grab; opacity:0.5;">☰</span>
+        <div>${llm.name} — ${llm.url}</div>
+      </div>
+      <div class="llm-actions" style="pointer-events:auto;">
+        ${baseLLMs.find((b) => b.name === llm.name) ? "" : `<button class="delete-btn">✕</button>`}
+      </div>
+    `;
+
+          // --- DRAG LOGIC ---
+          row.addEventListener("dragstart", (e) => {
+            row.classList.add("dragging");
+            // Required for some Linux/Electron versions to initialize the drag
+            e.dataTransfer.setData("text/plain", llm.name);
+            e.dataTransfer.effectAllowed = "move";
+          });
+
+          row.addEventListener("dragenter", (e) => {
+            const draggingItem = document.querySelector(".dragging");
+            if (!draggingItem || draggingItem === row) return;
+
+            // Determine if we move it before or after based on current DOM position
+            const children = Array.from(llmList.children);
+            const draggingIdx = children.indexOf(draggingItem);
+            const targetIdx = children.indexOf(row);
+
+            if (draggingIdx < targetIdx) {
+              row.after(draggingItem); // Moving down
+            } else {
+              row.before(draggingItem); // Moving up
+            }
+          });
+
+          row.addEventListener("dragover", (e) => {
+            e.preventDefault(); // REQUIRED to allow the drop
+            return false;
+          });
+
+          row.addEventListener("dragend", async () => {
+            row.classList.remove("dragging");
+            await saveCurrentOrder();
+          });
+
+          // --- DELETE LOGIC ---
+          const delBtn = row.querySelector(".delete-btn");
+          if (delBtn) {
+            delBtn.onclick = async (e) => {
+              e.stopPropagation();
+              settings.customLLMs = settings.customLLMs.filter(
+                (c) => c.name !== llm.name,
+              );
+              if (settings.orderedLLMs) {
+                settings.orderedLLMs = settings.orderedLLMs.filter(
+                  (c) => c.name !== llm.name,
+                );
+              }
+              await window.electronAPI.saveSettings(settings);
+              renderLLMs();
+            };
+          }
+
+          llmList.appendChild(row);
+        });
+      }
+      // CRITICAL: This listener must be OUTSIDE renderLLMs and attached once
+      llmList.addEventListener("dragover", (e) => {
+        e.preventDefault(); // Required to allow a drop
+        const draggingItem = document.querySelector(".dragging");
+        if (!draggingItem) return;
+
+        const afterElement = getDragAfterElement(llmList, e.clientY);
+        if (afterElement == null) {
+          llmList.appendChild(draggingItem); // Move to end
+        } else {
+          llmList.insertBefore(draggingItem, afterElement); // Shift order
+        }
+      });
+
+      function getDragAfterElement(container, y) {
+        // Get all rows except the one currently being dragged
+        const draggableElements = [
+          ...container.querySelectorAll(".llm-row:not(.dragging)"),
+        ];
+
+        return draggableElements.reduce(
+          (closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            // If the cursor is above the middle of this element, it's a candidate
+            if (offset < 0 && offset > closest.offset) {
+              return { offset: offset, element: child };
+            } else {
+              return closest;
+            }
+          },
+          { offset: Number.NEGATIVE_INFINITY },
+        ).element;
+      }
+
+      async function saveCurrentOrder() {
+        // Get all rows in their current visual order
+        const rows = [...llmList.querySelectorAll(".llm-row")];
+        const fullPool = [...baseLLMs, ...settings.customLLMs];
+
+        // Map the names in the DOM back to the actual data objects
+        const newOrder = rows
+          .map((r) => {
+            return fullPool.find((item) => item.name === r.dataset.name);
+          })
+          .filter(Boolean);
+
+        settings.orderedLLMs = newOrder;
+        await window.electronAPI.saveSettings(settings);
+        await window.electronAPI.refreshTray();
+      }
+
+      /* -----------------------------
+     SHORTCUT CAPTURE
+  ----------------------------- */
+      function normalizeKey(e) {
+        const map = {
+          Control: "Ctrl",
+          Alt: "Alt",
+          Shift: "Shift",
+          Meta: "Super",
+          " ": "Space",
+          Spacebar: "Space",
+          Space: "Space",
+        };
+        if (map[e.key]) return map[e.key];
+
+        const c = e.code;
+        if (c.startsWith("Key")) return c.slice(3).toUpperCase();
+        if (c.startsWith("Digit")) return c.slice(5);
+        if (/^F[1-9]\d?$/.test(c)) return c;
+
+        return e.key.length === 1 ? e.key.toUpperCase() : e.key;
+      }
+
+      function captureShortcut(el, settingName) {
+        let capturing = false;
+        let pressedOrder = [];
+        let pressedSet = new Set();
+
+        el.addEventListener("click", () => {
+          capturing = true;
+          pressedOrder = [];
+          pressedSet.clear();
+          el.textContent = "Press keys…";
+          el.style.outline = "2px solid var(--accent)";
+          window.electronAPI.setCaptureMode(true);
+          el.focus();
+        });
+
+        el.addEventListener("keydown", (e) => {
+          if (!capturing) return;
+          e.preventDefault();
+          if (e.repeat) return;
+
+          const key = normalizeKey(e);
+          if (!pressedSet.has(key)) {
+            pressedSet.add(key);
+            pressedOrder.push(key);
+            el.textContent = pressedOrder.join("+");
+          }
+        });
+
+        el.addEventListener("keyup", async (e) => {
+          if (!capturing) return;
+          e.preventDefault();
+
+          const key = normalizeKey(e);
+          pressedSet.delete(key);
+
+          if (pressedSet.size === 0) {
+            capturing = false;
+            el.style.outline = "none";
+            window.electronAPI.setCaptureMode(false);
+
+            const combo = pressedOrder.join("+");
+
+            if (combo && !["Ctrl", "Alt", "Shift", "Super"].includes(combo)) {
+              settings[settingName] = combo;
+              el.textContent = combo;
+              await window.electronAPI.saveSettings(settings);
+            }
+
+            pressedOrder = [];
+          }
+        });
+      }
+
+      captureShortcut(document.getElementById("shortcutDisplay"), "shortcut");
+      captureShortcut(
+        document.getElementById("centerShortcutDisplay"),
+        "centerShortcut",
+      );
+      captureShortcut(
+        document.getElementById("settingsShortcutDisplay"),
+        "settingsShortcut",
+      );
+
+      /* -----------------------------
+     LOAD SETTINGS
+  ----------------------------- */
+      async function loadSettings() {
+        settings = (await window.electronAPI.getSettings()) || {};
+        settings.customLLMs = settings.customLLMs || [];
+
+        document.getElementById("shortcutDisplay").textContent =
+          settings.shortcut || "Click to change shortcut";
+
+        document.getElementById("centerShortcutDisplay").textContent =
+          settings.centerShortcut || "Click to change shortcut";
+
+        document.getElementById("settingsShortcutDisplay").textContent =
+          settings.settingsShortcut || "Click to change shortcut";
+
+        document.getElementById("autoLaunch").checked =
+          await window.electronAPI.checkAutostart();
+
+        document.getElementById("showOnStartup").checked =
+          settings.showOnStartup !== false;
+
+        document.getElementById("enableTabs").checked =
+          settings.enableTabs || false;
+        document.getElementById("hideSystemBorders").checked =
+          settings.hideSystemBorders === true;
+
+        document.getElementById("theme").value = settings.theme || "auto";
+
+        const showIconsInput = document.getElementById("showMenuIcons");
+        const iconSizeInput = document.getElementById("menuIconSize");
+        const iconSizeContainer = document.getElementById("iconSizeContainer");
+
+        const iconsEnabled = settings.showMenuIcons !== false;
+        showIconsInput.checked = iconsEnabled;
+        iconSizeInput.value = settings.menuIconSize || "16";
+        iconSizeContainer.style.display = iconsEnabled ? "block" : "none";
+
+        showIconsInput.onchange = async () => {
+          const isChecked = showIconsInput.checked;
+          settings.showMenuIcons = isChecked;
+          iconSizeContainer.style.display = isChecked ? "block" : "none";
+          await window.electronAPI.saveSettings(settings);
+        };
+
+        iconSizeInput.onchange = async () => {
+          settings.menuIconSize = iconSizeInput.value;
+          await window.electronAPI.saveSettings(settings);
+        };
+
+        renderSearchEngines();
+        renderLLMs();
+      }
+
+      document
+        .getElementById("showOnStartup")
+        .addEventListener("change", async () => {
+          settings.showOnStartup =
+            document.getElementById("showOnStartup").checked;
+          await window.electronAPI.saveSettings(settings);
+        });
+
+      document
+        .getElementById("autoLaunch")
+        .addEventListener("change", async () => {
+          settings.autoLaunch = autoLaunch.checked;
+          await window.electronAPI.saveSettings(settings);
+        });
+
+      document
+        .getElementById("enableTabs")
+        .addEventListener("change", async () => {
+          settings.enableTabs = document.getElementById("enableTabs").checked;
+          await window.electronAPI.saveSettings(settings);
+        });
+
+      document
+        .getElementById("hideSystemBorders")
+        .addEventListener("change", async () => {
+          settings.hideSystemBorders =
+            document.getElementById("hideSystemBorders").checked;
+          await window.electronAPI.saveSettings(settings);
+        });
+
+      document.getElementById("theme").addEventListener("change", async () => {
+        settings.theme = theme.value;
+        await window.electronAPI.saveSettings(settings);
+      });
+
+      document.getElementById("addLLM").addEventListener("click", async () => {
+        const n = llmName.value.trim();
+        const u = llmUrl.value.trim();
+        if (!n || !u) return;
+
+        const newItem = { name: n, url: u };
+        settings.customLLMs.push(newItem);
+
+        // Also add to ordered list so it appears in the UI
+        if (settings.orderedLLMs) {
+          settings.orderedLLMs.push(newItem);
+        }
+
+        llmName.value = llmUrl.value = "";
+        await window.electronAPI.saveSettings(settings);
+        await window.electronAPI.refreshTray();
+        renderLLMs();
+      });
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          window.parent.postMessage("close-settings", "*");
+        }
+      });
+
+      /* -----------------------------
+         COLLAPSIBLE SECTIONS
+      ----------------------------- */
+      function setupCollapsibleSections() {
+        const sections = [
+          { header: 'generalHeader', content: 'generalContent' },
+          { header: 'contextMenuHeader', content: 'contextMenuContent' },
+          { header: 'shortcutsHeader', content: 'shortcutsContent' },
+          { header: 'llmsHeader', content: 'llmsContent' },
+          { header: 'searchEnginesHeader', content: 'searchEnginesContent' }
+        ];
+
+        sections.forEach(({ header, content }) => {
+          const headerEl = document.getElementById(header);
+          const contentEl = document.getElementById(content);
+
+          if (headerEl && contentEl) {
+            headerEl.addEventListener('click', () => {
+              const isCollapsed = contentEl.classList.contains('collapsed');
+
+              if (isCollapsed) {
+                contentEl.classList.remove('collapsed');
+                headerEl.classList.remove('collapsed');
+              } else {
+                contentEl.classList.add('collapsed');
+                headerEl.classList.add('collapsed');
+              }
+            });
+          }
+        });
+      }
+
+      /* -----------------------------
+         NEW SETTINGS HANDLERS
+      ----------------------------- */
+      async function loadNewSettings() {
+        // Load downloads path
+        const downloadsPath = await window.electronAPI.getDownloadsPath();
+        document.getElementById('downloadsPath').value = downloadsPath;
+
+        // Load zoom level
+        const zoomLevel = settings.zoomLevel || 0;
+        document.getElementById('zoomLevel').value = zoomLevel;
+
+        // Load user agent
+        const userAgent = settings.userAgent || '';
+        document.getElementById('userAgent').value = userAgent;
+      }
+
+      // Zoom level handler
+      document.getElementById('zoomLevel').addEventListener('change', async () => {
+        const level = parseFloat(document.getElementById('zoomLevel').value);
+        settings.zoomLevel = level;
+        await window.electronAPI.saveSettings(settings);
+        await window.electronAPI.setZoomLevel(level);
+      });
+
+      // User agent handler
+      document.getElementById('userAgent').addEventListener('change', async () => {
+        settings.userAgent = document.getElementById('userAgent').value.trim();
+        await window.electronAPI.saveSettings(settings);
+      });
+
+      // Initialize everything
+      setupCollapsibleSections();
+      loadSettings().then(() => loadNewSettings());
+    </script>
+  </body>
+</html>
